@@ -1,5 +1,4 @@
 import os,osproc,terminal,sequtils,strformat,strutils
-
 import kdl
 
 var doc: KdlDoc
@@ -75,12 +74,18 @@ proc getCommitMessage(commitType: KdlNode): string =
 
 proc checkRepoState() =
   var result = execCmdEx("git diff --name-only --cached --diff-filter=AM")
-  echo result
-  if result[1] != 0:
-    echo result[0]
-    error("git got problems",1)
-  if len(result[0]) == 0:
+  stripLineEnd(result[0])
+  var output = result[0]
+  var code = result[1]
+
+  if code != 0:
+    echo output
+    error("git got problems, see above",1)
+  if len(output) == 0:
     error("stage something first", 1)
+  else:
+    echo "committing changes to " & $len(output.split('\n'))
+  echo output
 
 proc main() =
   doc = loadConfigFile()
@@ -89,7 +94,8 @@ proc main() =
   var commitType = getChoice(config.types.children)
   echo &"You chose {commitType}!"
   var commitMessage = getCommitMessage(commitType)
-  var code = execCmd(&"git commit -m \'{commitMessage}\' -e")
+  # TODO: make -e configurable or prompted...
+  var code = execCmd(&"git commit -m \'{commitMessage}\'")
   if code != 0:
     error "Issue running git", code
 
