@@ -3,7 +3,7 @@ import os,osproc,terminal,sequtils,strformat,strutils
 import kdl
 
 var doc: KdlDoc
-const default = staticRead("./default.kdl")
+const default = slurp("./default.kdl")
 
 type
   Config = object
@@ -54,7 +54,8 @@ proc getChoice(options: seq[KdlNode]): KdlNode =
   while not (0..len(options)).contains(selection):
     write(stdout, "choice: ")
     # TODO: elegantly reset while if letter?
-    selection = parseInt(readLine(stdin))
+    selection = parseInt($getch())
+    echo selection
   return options[selection]
 
 proc getScope(commitType: KdlNode): string =
@@ -72,9 +73,19 @@ proc getCommitMessage(commitType: KdlNode): string =
     error("Blanks commit messages are useless...shame!", 1)
   result = commitType.name & scope & ": " & message
 
+proc checkRepoState() =
+  var result = execCmdEx("git diff --name-only --cached --diff-filter=AM")
+  echo result
+  if result[1] != 0:
+    echo result[0]
+    error("git got problems",1)
+  if len(result[0]) == 0:
+    error("stage something first", 1)
+
 proc main() =
   doc = loadConfigFile()
   var config = parseConfigFile(doc)
+  checkRepoState()
   var commitType = getChoice(config.types.children)
   echo &"You chose {commitType}!"
   var commitMessage = getCommitMessage(commitType)
